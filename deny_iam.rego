@@ -4,7 +4,7 @@ import input.tfplan as tfplan
 
 # Denied Terraform resources
 denied_resources = [
-    "aws_iam_role",
+  "aws_iam_role",
   "aws_iam_policy",
   "aws_iam_user",
   "aws_iam_group",
