@@ -1,4 +1,4 @@
-# Example 1: Basic S3 bucket with intelligent tiering
+#Basic S3 bucket with intelligent tiering
 resource "aws_s3_bucket" "example_bucket" {
   bucket = "my-example-bucket-with-intelligent-tiering"
   
