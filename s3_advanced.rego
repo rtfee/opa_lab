@@ -21,19 +21,27 @@ s3_lifecycle_configs[config] {
   array_contains(["create", "update"], config.change.actions[_])
 }
 
-# Check if a bucket has an associated lifecycle configuration using "bucket" attribute
-bucket_has_lifecycle(bucket_address) {
+# Check if a bucket has an associated lifecycle configuration
+bucket_has_lifecycle(bucket_resource) {
+  bucket := bucket_resource
   lifecycle_config := s3_lifecycle_configs[_]
-  # Check if lifecycle config references this bucket using "bucket" attribute
-  lifecycle_config.change.after.bucket == bucket_address
+  
+  # Get the actual bucket name from the bucket resource
+  bucket_name := bucket.change.after.bucket
+  
+  # Check if lifecycle config references this bucket by name
+  lifecycle_config.change.after.bucket == bucket_name
 }
 
-# Alternative check using planned_values for bucket reference
-bucket_has_lifecycle(bucket_address) {
+# Alternative check - match by resource reference patterns
+bucket_has_lifecycle(bucket_resource) {
+  bucket := bucket_resource
   lifecycle_config := s3_lifecycle_configs[_]
-  # Check using the bucket attribute in planned values
-  lifecycle_config.change.after.bucket != null
-  lifecycle_config.change.after.bucket == bucket_address
+  
+  # Check if lifecycle references the bucket resource directly
+  # This handles cases where the lifecycle config uses resource references
+  bucket_reference := sprintf("aws_s3_bucket.%s", [bucket.name])
+  lifecycle_config.change.after.bucket == bucket_reference
 }
 
 # Check if lifecycle configuration has intelligent tiering enabled
@@ -50,53 +58,55 @@ lifecycle_has_intelligent_tiering(lifecycle_config) {
 }
 
 # Check if bucket uses "bucket" attribute instead of "id" in lifecycle reference
-lifecycle_uses_bucket_attribute(bucket_address) {
+lifecycle_uses_bucket_attribute(bucket_resource) {
+  bucket := bucket_resource
   lifecycle_config := s3_lifecycle_configs[_]
-  # Ensure the lifecycle config uses "bucket" attribute, not "id"
-  lifecycle_config.change.after.bucket == bucket_address
-  # Verify that "id" is not being used (id would be null/undefined at plan time)
-  not lifecycle_config.change.after.id
+  bucket_name := bucket.change.after.bucket
+  
+  # Ensure the lifecycle config references the bucket by name (not resource ID)
+  lifecycle_config.change.after.bucket == bucket_name
+  
+  # Additional check: the bucket value should be a string, not a resource reference
+  is_string(lifecycle_config.change.after.bucket)
 }
 
 # Deny buckets without lifecycle configuration
 deny[reason] {
   bucket := s3_buckets_created[_]
-  bucket_address := bucket.address
-  not bucket_has_lifecycle(bucket_address)
+  not bucket_has_lifecycle(bucket)
   
   reason := sprintf(
     "S3 bucket %q must have a lifecycle configuration to enforce intelligent tiering",
-    [bucket_address]
+    [bucket.address]
   )
 }
 
 # Deny buckets whose lifecycle config doesn't use "bucket" attribute
 deny[reason] {
   bucket := s3_buckets_created[_]
-  bucket_address := bucket.address
-  bucket_has_lifecycle(bucket_address)
-  not lifecycle_uses_bucket_attribute(bucket_address)
+  bucket_has_lifecycle(bucket)
+  not lifecycle_uses_bucket_attribute(bucket)
   
   reason := sprintf(
     "S3 bucket %q lifecycle configuration must use 'bucket' attribute instead of 'id' for proper reference",
-    [bucket_address]
+    [bucket.address]
   )
 }
 
 # Deny buckets without intelligent tiering in lifecycle policy
 deny[reason] {
   bucket := s3_buckets_created[_]
-  bucket_address := bucket.address
-  bucket_has_lifecycle(bucket_address)
-  lifecycle_uses_bucket_attribute(bucket_address)
+  bucket_has_lifecycle(bucket)
+  lifecycle_uses_bucket_attribute(bucket)
   
   # Find the matching lifecycle config
+  bucket_name := bucket.change.after.bucket
   lifecycle_config := s3_lifecycle_configs[_]
-  lifecycle_config.change.after.bucket == bucket_address
+  lifecycle_config.change.after.bucket == bucket_name
   not lifecycle_has_intelligent_tiering(lifecycle_config)
   
   reason := sprintf(
     "S3 bucket %q lifecycle configuration must include intelligent tiering (INTELLIGENT_TIERING storage class)",
-    [bucket_address]
+    [bucket.address]
   )
 }
