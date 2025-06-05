@@ -12,7 +12,7 @@ resource "aws_s3_bucket" "example_bucket" {
 # Lifecycle configuration for the bucket - uses "bucket" attribute
 resource "aws_s3_bucket_lifecycle_configuration" "example_lifecycle" {
   # IMPORTANT: Using "bucket" attribute instead of "id" to reference the bucket
-  bucket = aws_s3_bucket.example_bucket.bucket
+  bucket = aws_s3_bucket.example_bucket.id
   
   rule {
     id     = "intelligent_tiering_rule"
