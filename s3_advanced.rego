@@ -21,59 +21,71 @@ s3_lifecycle_configs[config] {
   array_contains(["create", "update"], config.change.actions[_])
 }
 
-# Check if a bucket has an associated lifecycle configuration
-bucket_has_lifecycle(bucket_resource) {
-  bucket := bucket_resource
-  lifecycle_config := s3_lifecycle_configs[_]
-  
-  # Get the actual bucket name from the bucket resource
-  bucket_name := bucket.change.after.bucket
-  
-  # Check if lifecycle config references this bucket by name
-  lifecycle_config.change.after.bucket == bucket_name
+# Check if lifecycle configuration uses .id reference (bucket value is unknown at plan time)
+lifecycle_uses_id_reference(lifecycle_config) {
+  # If bucket is in after_unknown, it means it's using a reference like .id
+  lifecycle_config.change.after_unknown.bucket == true
 }
 
-# Alternative check - match by resource reference patterns
-bucket_has_lifecycle(bucket_resource) {
-  bucket := bucket_resource
-  lifecycle_config := s3_lifecycle_configs[_]
-  
-  # Check if lifecycle references the bucket resource directly
-  # This handles cases where the lifecycle config uses resource references
-  bucket_reference := sprintf("aws_s3_bucket.%s", [bucket.name])
-  lifecycle_config.change.after.bucket == bucket_reference
+# Check if lifecycle configuration uses direct bucket name (bucket value is known at plan time)
+lifecycle_uses_bucket_name(lifecycle_config) {
+  # If bucket is in after and not in after_unknown, it's using direct bucket name
+  lifecycle_config.change.after.bucket
+  not lifecycle_config.change.after_unknown.bucket
 }
 
-# Check if lifecycle configuration has intelligent tiering enabled
+# Check if lifecycle configuration has intelligent tiering
 lifecycle_has_intelligent_tiering(lifecycle_config) {
   rule := lifecycle_config.change.after.rule[_]
   transition := rule.transition[_]
   transition.storage_class == "INTELLIGENT_TIERING"
 }
 
-# Alternative check for intelligent tiering in different rule structure
-lifecycle_has_intelligent_tiering(lifecycle_config) {
-  rule := lifecycle_config.change.after.rule[_]
-  rule.transition.storage_class == "INTELLIGENT_TIERING"
+# Get bucket name from bucket resource
+get_bucket_name(bucket_resource) = bucket_name {
+  bucket_name := bucket_resource.change.after.bucket
 }
 
-# Check if bucket uses "bucket" attribute instead of "id" in lifecycle reference
-lifecycle_uses_bucket_attribute(bucket_resource) {
-  bucket := bucket_resource
+# Check if there's a lifecycle config that references the bucket using .id (bad)
+bucket_has_id_referenced_lifecycle(bucket_resource) {
   lifecycle_config := s3_lifecycle_configs[_]
-  bucket_name := bucket.change.after.bucket
+  lifecycle_uses_id_reference(lifecycle_config)
   
-  # Ensure the lifecycle config references the bucket by name (not resource ID)
-  lifecycle_config.change.after.bucket == bucket_name
+  # Check configuration section to see if this lifecycle references our bucket
+  bucket_address := bucket_resource.address
+  lifecycle_address := lifecycle_config.address
+  config_resource := tfplan.configuration.root_module.resources[_]
+  config_resource.address == lifecycle_address
   
-  # Additional check: the bucket value should be a string, not a resource reference
-  is_string(lifecycle_config.change.after.bucket)
+  # Check if the bucket reference points to our bucket
+  reference := config_resource.expressions.bucket.references[_]
+  contains(reference, bucket_address)
 }
 
-# Deny buckets without lifecycle configuration
+# Check if there's a lifecycle config that references the bucket using bucket name (good)
+bucket_has_name_referenced_lifecycle(bucket_resource) {
+  lifecycle_config := s3_lifecycle_configs[_]
+  lifecycle_uses_bucket_name(lifecycle_config)
+  
+  bucket_name := get_bucket_name(bucket_resource)
+  lifecycle_config.change.after.bucket == bucket_name
+}
+
+# Check if bucket has any lifecycle configuration at all
+bucket_has_any_lifecycle(bucket_resource) {
+  bucket_has_id_referenced_lifecycle(bucket_resource)
+}
+
+bucket_has_any_lifecycle(bucket_resource) {
+  bucket_has_name_referenced_lifecycle(bucket_resource)
+}
+
+# DENY RULES
+
+# Deny buckets without any lifecycle configuration
 deny[reason] {
   bucket := s3_buckets_created[_]
-  not bucket_has_lifecycle(bucket)
+  not bucket_has_any_lifecycle(bucket)
   
   reason := sprintf(
     "S3 bucket %q must have a lifecycle configuration to enforce intelligent tiering",
@@ -81,28 +93,29 @@ deny[reason] {
   )
 }
 
-# Deny buckets whose lifecycle config doesn't use "bucket" attribute
+# Deny buckets whose lifecycle config uses .id reference instead of bucket name
 deny[reason] {
   bucket := s3_buckets_created[_]
-  bucket_has_lifecycle(bucket)
-  not lifecycle_uses_bucket_attribute(bucket)
+  bucket_has_id_referenced_lifecycle(bucket)
+  not bucket_has_name_referenced_lifecycle(bucket)
   
   reason := sprintf(
-    "S3 bucket %q lifecycle configuration must use 'bucket' attribute instead of 'id' for proper reference",
+    "S3 bucket %q lifecycle configuration must use 'bucket' attribute (bucket name) instead of 'id' for proper reference",
     [bucket.address]
   )
 }
 
-# Deny buckets without intelligent tiering in lifecycle policy
+# Deny buckets without intelligent tiering in their lifecycle policy
 deny[reason] {
   bucket := s3_buckets_created[_]
-  bucket_has_lifecycle(bucket)
-  lifecycle_uses_bucket_attribute(bucket)
+  bucket_has_name_referenced_lifecycle(bucket)
   
-  # Find the matching lifecycle config
-  bucket_name := bucket.change.after.bucket
+  # Find the lifecycle config that uses bucket name
   lifecycle_config := s3_lifecycle_configs[_]
+  lifecycle_uses_bucket_name(lifecycle_config)
+  bucket_name := get_bucket_name(bucket)
   lifecycle_config.change.after.bucket == bucket_name
+  
   not lifecycle_has_intelligent_tiering(lifecycle_config)
   
   reason := sprintf(
