@@ -33,7 +33,7 @@ rule {
     
     transition {
       days          = 90
-      storage_class = "GLACIER"
+      storage_class = "INTELLIGENT_TIERING"
     }
   }
 }
