@@ -16,7 +16,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "example_lifecycle" {
   
   rule {
     id     = "intelligent_tiering_rule"
-    status = "Enabled"
+    status = "Disabled"
 
    filter {  
       prefix = ""  
