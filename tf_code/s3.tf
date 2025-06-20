@@ -22,11 +22,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "example_lifecycle" {
       prefix = ""  
     } 
     
-    # Transition to intelligent tiering after 1 day
-    transition {
-      days          = 1
-      storage_class = "GLACIER"
-    }
     
     # Optional: Additional transitions for cost optimization
     transition {
