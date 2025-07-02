@@ -2,9 +2,6 @@ package terraform
 
 import rego.v1
 
-exempt(addr) if addr == exempt_resources[addr]
-
-
 check_match(resource) if {
     r := input.tfplan.resource_changes[_]
     r.type =="aws_s3_bucket_lifecycle_configuration"
