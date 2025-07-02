@@ -1,6 +1,7 @@
 package terraform
 
-import input.tfplan as tfplan
+#import input.tfplan as tfplan
+import rego.v1
 
 # Helper function to check if array contains element
 array_contains(arr, elem) {
