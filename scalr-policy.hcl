@@ -5,7 +5,7 @@ policy "deny_iam" {
     enforcement_level = "soft-mandatory"
 }
 
-policy "s3_advanced" {
+policy "s3_advanced_using_v1" {
     enabled = true
     enforcement_level = "soft-mandatory"
 }
