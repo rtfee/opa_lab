@@ -30,7 +30,6 @@ check_lifecycle(resource) if {
 deny contains reason if {
     resource := input.tfplan.resource_changes[_]
     resource.type = "aws_s3_bucket"
-    not exempt(resource.address)
     "create" in resource.change.actions
     not check_id(resource) # if there is a lifecyle with no bucket reference set this to false to skip rule
     not check_match(resource) 
@@ -48,7 +47,6 @@ deny contains reason if {
 deny contains reason if {
     resource := input.tfplan.resource_changes[_]
     resource.type = "aws_s3_bucket"
-    not exempt(resource.address)
     "create" in resource.change.actions
     not check_id(resource) # if there is a lifecyle with no bucket reference set this to false to skip rule
     check_match(resource) # if there is no match then this returns false and the policy is skipped
