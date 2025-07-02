@@ -2,10 +2,6 @@ package terraform
 
 import rego.v1
 
-exempt_resources := {
-    "aws_s3_bucket.sf-pcatgov-test-us-east-1-focus-report-exception"
-}
-
 exempt(addr) if addr == exempt_resources[addr]
 
 
