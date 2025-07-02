@@ -10,7 +10,7 @@ deny[reason] if {
   action == "delete"
 
   reason := sprintf(
-   "Confirm the deletion of the null_resource %q",
+   "Confirm ALL the deletion of the null_resource %q",
    [resource.address],
   )
 }
