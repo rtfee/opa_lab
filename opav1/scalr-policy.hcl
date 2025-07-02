@@ -1,6 +1,6 @@
 version = "v1"
 
 policy "null" {
-    enabled = false
+    enabled = true
     enforcement_level = "soft-mandatory"
 }
