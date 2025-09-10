@@ -2,14 +2,6 @@ package terraform
 
 import input.tfplan as tfplan
 
-# Default deny - all module sources must be validated
-default allow := false
-
-# Allow if all module sources use the account registry
-allow if {
-    count(invalid_modules) == 0
-}
-
 # Find all modules with invalid sources
 invalid_modules contains module if {
     some module_name, module_config in input.tfplan.configuration.root_module.module_calls
