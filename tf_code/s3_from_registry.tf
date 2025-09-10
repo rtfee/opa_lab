@@ -5,5 +5,5 @@ module "s3-bucket" {
 	# Set 1 required variable below.
 
 	# (Optional, Forces new resource) The name of the bucket. If omitted, Terraform will assign a random, unique name.
- 	bucket = <value>
+ 	bucket = "scalr1245678"
 }
