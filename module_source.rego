@@ -1,6 +1,12 @@
 package terraform
 
-import input.tfplan as tfplan
+import rego.v1
+
+# Deny if any modules use non-account registry sources
+deny[msg] if {
+    count(invalid_modules) > 0
+    msg := sprintf("Policy violation: %d module(s) found using non-account registry sources. All modules must use scalrdemov2.scalr.io as the source.", [count(invalid_modules)])
+}
 
 # Find all modules with invalid sources
 invalid_modules contains module if {
@@ -13,12 +19,6 @@ invalid_modules contains module if {
     }
 }
 
-# Violation message for non-compliant modules
-violation[msg] if {
-    count(invalid_modules) > 0
-    msg := sprintf("Policy violation: %d module(s) found using non-account registry sources. All modules must use scalrdemov2.scalr.io as the source.", [count(invalid_modules)])
-}
-
 # Detailed violation information
 violation_details contains detail if {
     some module in invalid_modules
@@ -27,12 +27,4 @@ violation_details contains detail if {
         "source": module.source,
         "message": "Module source must start with 'scalrdemov2.scalr.io'"
     }
-}
-
-# Advisory information for compliant configurations
-advisory[msg] if {
-    count(invalid_modules) == 0
-    total_modules := count(input.tfplan.configuration.root_module.module_calls)
-    total_modules > 0
-    msg := sprintf("All %d module(s) correctly use scalrdemov2.scalr.io as the source.", [total_modules])
 }
