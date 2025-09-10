@@ -1,6 +1,6 @@
-package terraform.module_registry
+package terraform
 
-import rego.v1
+import input.tfplan as tfplan
 
 # Default deny - all module sources must be validated
 default allow := false
