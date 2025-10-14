@@ -14,3 +14,8 @@ policy "module_source" {
     enabled = true
     enforcement_level = "advisory"
 }
+
+policy "block_applies" {
+    enabled = true
+    enforcement_level = "soft-mandatory"
+}
