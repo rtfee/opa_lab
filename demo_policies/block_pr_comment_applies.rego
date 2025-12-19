@@ -10,5 +10,5 @@ deny contains msg if {
     # Check if the workspace is production
     workspace_type := tfrun.workspace.environment_type
     workspace_type == "production"
-    msg := sprintf("Comment based runs are not allowed in production workspaces")
+    msg := ("Comment based runs are not allowed in production workspaces")
 }
