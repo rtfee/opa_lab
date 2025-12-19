@@ -3,7 +3,7 @@ resource "aws_s3_bucket" "example_bucket" {
   bucket = "my-example-bucket-with-intelligent-tiering"
   
   tags = {
-    Name        = "scalr48727464829"
+    Name        = "scalr48727464829"2
     Environment = "Production"
     Purpose     = "Data Storage with Intelligent Tiering"
   }
